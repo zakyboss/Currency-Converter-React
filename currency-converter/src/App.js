@@ -17,21 +17,35 @@ function App() {
   };
   useEffect(
     function () {
+      const controller = new AbortController();
       if (!amount) {
         return;
       }
 
       async function getCurrency() {
         const res = await fetch(
-          `https://api.frankfurter.app/latest?amount=${amount}&from=${currencyFrom}&to=${currencyTo}`
+          `https://api.frankfurter.app/latest?amount=${amount}&from=${currencyFrom}&to=${currencyTo}`,
+          { signal: controller.signal }
         );
-
+        if (!res) {
+          return;
+        }
         const data = await res.json();
-        const rates = data.rates;
+        if (!data) {
+          return;
+        }
 
+        const rates = data.rates;
+        if (!rates) {
+          return;
+        }
         setResult(() => rates[currencyTo]);
       }
       getCurrency();
+      return function () {
+        controller.abort();
+       
+      };
     },
     [currencyFrom, currencyTo, amount]
   );
@@ -113,7 +127,7 @@ function MoneyForm({ currencyData }) {
 function Output({ result }) {
   return (
     <div>
-      <span>Amount is {result}</span>
+      <span>Amount is {result ? result : ""}</span>
     </div>
   );
 }
