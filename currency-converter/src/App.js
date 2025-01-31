@@ -6,6 +6,8 @@ function App() {
   const [currencyTo, setCurrencyTo] = useState("");
   const [amount, setAmount] = useState("");
   const [result, setResult] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
   const currencyData = {
     currencyFrom,
     currencyTo,
@@ -18,33 +20,46 @@ function App() {
   useEffect(
     function () {
       const controller = new AbortController();
-      if (!amount) {
+
+      if (!amount || !currencyFrom || !currencyTo) {
         return;
       }
 
       async function getCurrency() {
-        const res = await fetch(
-          `https://api.frankfurter.app/latest?amount=${amount}&from=${currencyFrom}&to=${currencyTo}`,
-          { signal: controller.signal }
-        );
-        if (!res) {
-          return;
-        }
-        const data = await res.json();
-        if (!data) {
-          return;
-        }
+        try {
+          setIsLoading(true);
+          const res = await fetch(
+            `https://api.frankfurter.app/latest?amount=${amount}&from=${currencyFrom}&to=${currencyTo}`,
+            { signal: controller.signal }
+          );
 
-        const rates = data.rates;
-        if (!rates) {
-          return;
+          if (!res.ok) {
+            throw new Error("Failed to fetch currency data");
+          }
+
+          const data = await res.json();
+
+          if (!data.rates || !data.rates[currencyTo]) {
+            throw new Error("No conversion rate found");
+          }
+
+          setResult(data.rates[currencyTo]);
+          setError(null);
+        } catch (err) {
+          if (err.name !== "AbortError") {
+            console.error("Currency conversion error:", err.message);
+            setError(err.message);
+            setResult(null);
+          }
+        } finally {
+          setIsLoading(false);
         }
-        setResult(() => rates[currencyTo]);
       }
+
       getCurrency();
+
       return function () {
         controller.abort();
-       
       };
     },
     [currencyFrom, currencyTo, amount]
@@ -53,7 +68,11 @@ function App() {
     <div className="App">
       <Header />
       <CurrencyChange>
-        <MoneyForm currencyData={currencyData} />
+        <MoneyForm
+          currencyData={currencyData}
+          isLoading={isLoading}
+          error={error}
+        />
       </CurrencyChange>
       <Footer />
     </div>
@@ -73,7 +92,7 @@ function CurrencyChange({ children }) {
   return <div className="currencyContainer">{children}</div>;
 }
 
-function MoneyForm({ currencyData }) {
+function MoneyForm({ currencyData, isLoading, error }) {
   const {
     currencyFrom,
     currencyTo,
@@ -118,16 +137,18 @@ function MoneyForm({ currencyData }) {
         </select>
         <br />
         <span>
-          <Output result={result} />
+          <Output result={result} isLoading={isLoading} error={error} />
         </span>
       </div>
     </div>
   );
 }
-function Output({ result }) {
+function Output({ result, isLoading, error }) {
   return (
     <div>
-      <span>Amount is {result ? result : ""}</span>
+      {isLoading && <p>Loading...</p>}
+      {error && <p>Error: {error}</p>}
+      {result !== null && <p>Converted Amount: {result}</p>}{" "}
     </div>
   );
 }
