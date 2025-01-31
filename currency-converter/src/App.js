@@ -5,7 +5,7 @@ function App() {
   const [currencyFrom, setCurrencyFrom] = useState("");
   const [currencyTo, setCurrencyTo] = useState("");
   const [amount, setAmount] = useState("");
-
+  const [result, setResult] = useState(null);
   const currencyData = {
     currencyFrom,
     currencyTo,
@@ -13,15 +13,23 @@ function App() {
     setCurrencyFrom,
     setCurrencyTo,
     setAmount,
+    result,
   };
   useEffect(
     function () {
+      if (!amount) {
+        return;
+      }
+
       async function getCurrency() {
         const res = await fetch(
           `https://api.frankfurter.app/latest?amount=${amount}&from=${currencyFrom}&to=${currencyTo}`
         );
+
         const data = await res.json();
-        console.log(data);
+        const rates = data.rates;
+
+        setResult(() => rates[currencyTo]);
       }
       getCurrency();
     },
@@ -59,6 +67,7 @@ function MoneyForm({ currencyData }) {
     setCurrencyFrom,
     setCurrencyTo,
     setAmount,
+    result,
   } = currencyData;
 
   return (
@@ -95,16 +104,16 @@ function MoneyForm({ currencyData }) {
         </select>
         <br />
         <span>
-          <Output amount={amount} />
+          <Output result={result} />
         </span>
       </div>
     </div>
   );
 }
-function Output({ amount }) {
+function Output({ result }) {
   return (
     <div>
-      <span>Amount is {amount}</span>
+      <span>Amount is {result}</span>
     </div>
   );
 }
