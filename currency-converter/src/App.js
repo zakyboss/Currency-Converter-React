@@ -26,6 +26,10 @@ function App() {
       }
 
       async function getCurrency() {
+        if (currencyFrom === currencyTo) {
+          setResult(amount);
+          return;
+        }
         try {
           setIsLoading(true);
           const res = await fetch(
